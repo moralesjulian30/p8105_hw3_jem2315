@@ -1,0 +1,72 @@
+---
+title: "p8105_hw3_jem2315"
+author: "Julian Morales"
+date: "2026-10-13"
+output: github_document
+---
+
+```{r echo = FALSE, message = FALSE, warning=FALSE}
+library(tidyverse)
+```
+
+## Problem 1
+
+```{r message=FALSE, warning=FALSE}
+library(p8105.datasets)
+data("ny_noaa")
+#Data cleaning
+ny_df = 
+  ny_noaa |> 
+  janitor::clean_names() |> 
+  mutate(
+    year = year(date),
+    month = month(date),
+    day = day(date),
+    prcp = prcp/10,
+    tmax = as.numeric(tmax)/10,
+    tmin = as.numeric(tmin)/10
+  )
+
+#Most commonly observed snowfall values
+ny_noaa |> 
+  group_by(snow) |> 
+  summarize(n_obs=n()) |> 
+  arrange(desc(n_obs))
+
+#Average max temp in January and July in each station across years
+ny_df |> 
+  filter(month == 1 | month == 7) |> 
+  group_by(id, year, month) |>
+  summarize(
+    mean_tmax = mean(tmax, na.rm = TRUE)) |> 
+  ggplot(aes(x = year, y = mean_tmax, color = month))+
+  geom_point()+
+  geom_smooth(color = "red")+
+  facet_grid(.~month)
+```
+
+In the `ny_noaa` dataset, there are `r ncol(ny_noaa)` columns/variables and a total of `r nrow(ny_noaa)` observations tracking precipitation levels, snowfall, snow depth, maximum and minimum temperatures, and the ID numbers of which weather stations in New York state collected this data. In this dataset, there are `r sum(is.na(ny_noaa))` total `NA` entries, meaning that `r round(mean(is.na(ny_noaa))*100)`% of the total entries in the data set are `NA` values.
+
+After cleaning the dataset, the most commonly observed values are 0 mm with a count of 2,008,508 obs, NA with a count of 381,221 obs, and 25 mm with a count of 31,022 obs. This is most likely due to the fact that New York is a seasonal state with snowfall mostly occurring during the winter season. Since snowfall is uncommon throughout most of the year, there would not be many occurrences of snowfall in this dataset. The large number of NA would also suggest that snowfall was not recorded for every observation. When plotting the average max temperature for January and July across years there seems to be fluctuating shape for the month of January between low and medium temps, while July remains relatively constant at higher temps. There are some outliers for both January and July at lower temperatures. 
+
+```{r message=FALSE, warning=FALSE,  fig.width=12, fig.height=16}
+#plot_i and plot_ii
+library(patchwork)
+
+plot_i = 
+  ny_df |> 
+  ggplot(aes(x = tmax, y = tmin))+
+  geom_hex()
+
+plot_ii = 
+  ny_df |> 
+  filter(snow > 0, snow < 100) |> 
+  ggplot(aes(x = snow))+
+  geom_histogram()+
+  facet_wrap(.~year)
+
+(plot_i/plot_ii)+
+   plot_layout(heights = c(1, 3))
+```
+
+## Problem 2
