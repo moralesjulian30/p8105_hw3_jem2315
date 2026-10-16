@@ -70,3 +70,88 @@ plot_ii =
 ```
 
 ## Problem 2
+```{r message=FALSE, warning=FALSE}
+accel_df = 
+  read_csv("data/nhanes_accel.csv", na = c("", ".", "NA")) |> 
+  janitor::clean_names()
+
+covar_df = 
+  read_csv("data/nhanes_covar.csv", skip = 4, na = c("", ".", "NA")) |> 
+  janitor::clean_names()
+
+accel_covar = 
+  left_join(accel_df, covar_df, by = "seqn") |>
+  filter(age >= 21) |> 
+  drop_na(sex, age, bmi, education) |> 
+  mutate(
+    sex = factor(sex,
+                 levels = c(1,2),
+                 labels = c("Male", "Female")),
+    education = factor(education,
+                       levels = c(1,2,3),
+                       labels = c("Less than high school", "High school equivalent", 
+                                  "More than high school"))
+  )
+
+#reader-friendly table
+education_tb = 
+  accel_covar |> 
+  count(education, sex) |> 
+  pivot_wider(
+    names_from = sex,
+    values_from = n
+  )
+knitr::kable(education_tb)
+
+#age distribution visualization
+accel_covar |> 
+ggplot(aes(age)) + 
+geom_histogram() + 
+facet_grid(sex~education)
+
+```
+
+In merging the two nhanes accelerometer and covariate data sets, it was found that among the males in the data, 27 had a Less than high school level education, 35 had a high school equivalent education, and 56 had more than high school education. Among females in the dataset, 28 had a Less than high school level education, 23 had a high school equivalent education, and 59 had more than high school education.
+
+In examining the age distribution across education levels, stratified by sex, for both males and females, there seemed to be older participants that had a Less than high school education (slightly skewed to the left). For a high school equivalent education there is a wide spread of ages with a heavier concentration of older participants among females than males. For an education level that is more than high school there is also a wide distribution of ages for both males and females, where there are younger ages among females (slightly right skewed) compared to males.
+
+```{r message=FALSE, warning=FALSE}
+accel_covar |> 
+  pivot_longer(
+    min1:min1440, 
+    names_to = "time",
+    values_to = "activity"
+  )|> 
+  group_by(seqn, sex, education, age) |> 
+  summarise(
+    total_activity = sum(activity, na.rm = TRUE)
+  ) |> 
+  ggplot(aes(x = age, y = total_activity, color = sex))+
+  geom_point()+
+  geom_smooth(se = FALSE)+
+  facet_grid(.~education)
+```
+
+In looking at total activity over the day between education categories and sex, the general trend across all categories and sexes is that as age increases, total activity decreases. Among those with a less than high school education, males remain generally more active through most ages as they get older compared to females, with a peak in activity levels around 60 for both sexes and then a steep decline. Among those with a high schoool equivalent education level, females remain substantially more active than males, especially during the 20-50 age range. Among those with more than a high school education, both male and female activity stay consistent until the age 60 before declining.
+
+```{r message=FALSE, warning=FALSE}
+accel_covar |>
+  pivot_longer(
+    min1:min1440,
+    names_to = "time",
+    names_prefix = "min",
+    names_transform = list(time = as.numeric),
+    values_to = "activity"
+  ) |>
+  mutate(
+    hour = time/60
+  ) |> 
+  ggplot(aes(x = hour, y = activity, color = sex)) +
+  geom_point(alpha = 0.1) +
+  geom_smooth(se = FALSE) +
+  facet_grid(. ~ education)
+```
+
+Over a 24-hour activity time course, across all education levels, there is higher levels of activity occurring through the middle of the day (between hours 10 - 15). Between all three education levels, those who had more than high school education had substantially higher levels of activity. Between the sexes, activity levels throughout the 24 hour period coincide closely throughout the day.
+
+## Problem 3
